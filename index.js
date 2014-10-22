@@ -1,10 +1,19 @@
 var repl = require('repl');
 var mongodb = require('mongodb');
-var Promise = require('mpromise');
+var Emitter = require('events').EventEmitter;
 var commander = require('commander');
 var co = require('co');
+var vm = require('vm');
 
 var uri = 'mongodb://localhost:27017/test';
+
+function CustomEmitter() {
+  var e = new Emitter();
+
+  this.on = function() { e.on.apply(e, arguments); };
+  this.once = function() { e.once.apply(e, arguments); };
+  this.emit = function() { e.emit.apply(e, arguments); };
+}
 
 mongodb.MongoClient.connect(uri, function(error, connection) {
   var db = {};
@@ -13,22 +22,14 @@ mongodb.MongoClient.connect(uri, function(error, connection) {
     get: function() {
       var wrapper = {
         find: function(q) {
-          var p = new Promise;
-          //console.log('running query ' + JSON.stringify(q));
+          var p = new CustomEmitter();
           connection.collection('test').find(q).toArray(function(error, result) {
             if (error) {
-              return p.reject(error);
+              return p.emit('error', error);
             }
-            console.log('Got result ' + JSON.stringify(result));
-            p.resolve(result);
+            p.emit('done', result);
           });
-
-          var result;
-          co(function*() {
-            result = yield p;
-          })();
-          //console.log('Got ' + JSON.stringify(result));
-          return result;
+          return p;
         }
       };
 
@@ -37,7 +38,24 @@ mongodb.MongoClient.connect(uri, function(error, connection) {
   });
 
   var replServer = repl.start({
-    prompt: 'nodeshell> '
+    prompt: 'nodeshell> ',
+    eval: function(cmd, context, filename, callback) {
+      var result = vm.runInContext(cmd, context);
+      if (result instanceof CustomEmitter) {
+        result.on('done', function(data) {
+          callback(null, data);
+        });
+        result.on('error', function(error) {
+          console.log('error: ' + error);
+          console.log(cmd);
+          callback();
+        });
+      } else {
+        process.nextTick(function() {
+          callback(null, result);
+        });
+      }
+    }
   });
 
   replServer.context.db = db;
