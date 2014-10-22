@@ -16,20 +16,27 @@ function CustomEmitter() {
 }
 
 mongodb.MongoClient.connect(uri, function(error, connection) {
-  var db = {};
-
-  Object.defineProperty(db, 'test', {
-    get: function() {
+  var db = Proxy.create({
+    get: function(proxy, collectionName) {
       var wrapper = {
         find: function(q) {
           var p = new CustomEmitter();
-          connection.collection('test').find(q).toArray(function(error, result) {
+          connection.collection(collectionName).find(q).toArray(function(error, result) {
             if (error) {
               return p.emit('error', error);
             }
             p.emit('done', result);
           });
           return p;
+        },
+        insert: function(doc) {
+          var p = new CustomEmitter();
+          connection.collection(collectionName).insert(doc, function(error, result) {
+            if (error) {
+              return p.emit('error', error);
+            }
+            p.emit('done', result);
+          });
         }
       };
 
@@ -46,9 +53,8 @@ mongodb.MongoClient.connect(uri, function(error, connection) {
           callback(null, data);
         });
         result.on('error', function(error) {
-          console.log('error: ' + error);
-          console.log(cmd);
-          callback();
+          console.log('error occurred running ' + cmd);
+          callback(error);
         });
       } else {
         process.nextTick(function() {
