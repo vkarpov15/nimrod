@@ -2,7 +2,6 @@ var repl = require('repl');
 var mongodb = require('mongodb');
 var Emitter = require('events').EventEmitter;
 var commander = require('commander');
-var co = require('co');
 var vm = require('vm');
 
 var uri = 'mongodb://localhost:27017/test';
