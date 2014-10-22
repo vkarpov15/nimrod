@@ -1,17 +1,21 @@
 var repl = require('repl');
 var mongodb = require('mongodb');
 var Emitter = require('events').EventEmitter;
+var Promise = require('mpromise');
 var commander = require('commander');
 var vm = require('vm');
+var _ = require('underscore');
+var co = require('co');
 
 var uri = 'mongodb://localhost:27017/test';
 
-function CustomEmitter() {
-  var e = new Emitter();
+function CustomPromise() {
+  var p = new Promise();
+  var _this = this;
 
-  this.on = function() { e.on.apply(e, arguments); };
-  this.once = function() { e.once.apply(e, arguments); };
-  this.emit = function() { e.emit.apply(e, arguments); };
+  _.each(['then', 'on', 'fulfill', 'reject'], function(key) {
+    _this[key] = function() { p[key].apply(p, arguments) };
+  });
 }
 
 mongodb.MongoClient.connect(uri, function(error, connection) {
@@ -19,23 +23,24 @@ mongodb.MongoClient.connect(uri, function(error, connection) {
     get: function(proxy, collectionName) {
       var wrapper = {
         find: function(q) {
-          var p = new CustomEmitter();
+          var p = new CustomPromise();
           connection.collection(collectionName).find(q).toArray(function(error, result) {
             if (error) {
-              return p.emit('error', error);
+              return p.reject(error);
             }
-            p.emit('done', result);
+            p.fulfill(result);
           });
           return p;
         },
         insert: function(doc) {
-          var p = new CustomEmitter();
+          var p = new CustomPromise();
           connection.collection(collectionName).insert(doc, function(error, result) {
             if (error) {
-              return p.emit('error', error);
+              return p.reject(error);
             }
-            p.emit('done', result);
+            p.fulfill(result);
           });
+          return p;
         }
       };
 
@@ -47,11 +52,11 @@ mongodb.MongoClient.connect(uri, function(error, connection) {
     prompt: 'nodeshell> ',
     eval: function(cmd, context, filename, callback) {
       var result = vm.runInContext(cmd, context);
-      if (result instanceof CustomEmitter) {
-        result.on('done', function(data) {
+      if (result instanceof CustomPromise) {
+        result.on('fulfill', function(data) {
           callback(null, data);
         });
-        result.on('error', function(error) {
+        result.on('reject', function(error) {
           console.log('error occurred running ' + cmd);
           callback(error);
         });
