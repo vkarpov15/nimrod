@@ -1,30 +1,27 @@
 var repl = require('repl');
 var mongodb = require('mongodb');
-var Emitter = require('events').EventEmitter;
-var Promise = require('mpromise');
 var commander = require('commander');
 var vm = require('vm');
 var _ = require('underscore');
-var co = require('co');
 var asyncblock = require('asyncblock');
 
 var uri = 'mongodb://localhost:27017/test';
 var currentFlow;
-
-function CustomPromise() {
-  var p = new Promise();
-  var _this = this;
-
-  _.each(['then', 'on', 'fulfill', 'reject'], function(key) {
-    _this[key] = function() { p[key].apply(p, arguments) };
-  });
-}
+var lastCursor;
 
 function ShellIterator(cursor) {
+  var _this = this;
   this.next = function() {
     cursor.nextObject(currentFlow.add());
     return currentFlow.wait();
   };
+
+  _.each(['sort', 'limit', 'skip'], function(fn) {
+    _this[fn] = function() {
+      cursor[fn].apply(cursor, arguments);
+      return _this;
+    };
+  });
 }
 
 mongodb.MongoClient.connect(uri, function(error, connection) {
@@ -36,14 +33,12 @@ mongodb.MongoClient.connect(uri, function(error, connection) {
           return new ShellIterator(currentFlow.wait());
         },
         insert: function(doc) {
-          var p = new CustomPromise();
-          connection.collection(collectionName).insert(doc, function(error, result) {
-            if (error) {
-              return p.reject(error);
-            }
-            p.fulfill(result);
-          });
-          return p;
+          connection.collection(collectionName).insert(doc, currentFlow.add());
+          return currentFlow.wait();
+        },
+        findOne: function(q) {
+          connection.collection(collectionName).findOne(q, currentFlow.add());
+          return currentFlow.wait();
         }
       };
 
@@ -58,20 +53,18 @@ mongodb.MongoClient.connect(uri, function(error, connection) {
         context.flow = flow;
         currentFlow = flow;
         var result = vm.runInContext(cmd, context);
-        if (result instanceof CustomPromise) {
-          result.on('fulfill', function(data) {
-            callback(null, data);
-          });
-          result.on('reject', function(error) {
-            console.log('error occurred running ' + cmd);
-            callback(error);
-          });
-        } else if (result instanceof ShellIterator) {
+        if (result instanceof ShellIterator) {
+          lastCursor = result;
           var documents = [];
           for (var i = 0; i < 10; ++i) {
-            documents.push(result.next());
+            var doc = result.next();
+            if (!doc) {
+              break;
+            }
+            documents.push(doc);
           }
-          callback(null, documents);
+          console.log(JSON.stringify(documents, null, '  '));
+          callback(null, 'Type "it" for more');
         } else {
           callback(null, result);
         }
@@ -84,4 +77,9 @@ mongodb.MongoClient.connect(uri, function(error, connection) {
   });
 
   replServer.context.db = db;
+  Object.defineProperty(replServer.context, 'it', {
+    get: function() {
+      return lastCursor;
+    }
+  });
 });
