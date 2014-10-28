@@ -1,4 +1,4 @@
-nims
-====
+nimrod
+======
 
-Node In MongoDB Shell
+NodeJS-infused MongoDB shell - use `require()` and synchronous `db.test.find()` in the same environment
