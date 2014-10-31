@@ -86,7 +86,10 @@ mongodb.MongoClient.connect(commander.uri, function(error, connection) {
               documents.push(doc);
             }
             console.log(JSON.stringify(documents, null, '  '));
-            callback(null, 'Type "it" for more');
+            if (documents.length >= 10) {
+              return callback(null, 'Type "it" for more');
+            }
+            return callback(null, 'No documents left');
           } else {
             callback(null, result);
           }
