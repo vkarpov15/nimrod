@@ -38,16 +38,20 @@ mongodb.MongoClient.connect(commander.uri, function(error, connection) {
           connection.collection(collectionName).find(q, currentFlow.add());
           return new ShellIterator(currentFlow.wait());
         },
-        insert: function(doc) {
-          connection.collection(collectionName).insert(doc, currentFlow.add());
-          return currentFlow.wait();
-        },
         findOne: function(q) {
           connection.collection(collectionName).findOne(q, currentFlow.add());
           return currentFlow.wait();
         },
+        insert: function(doc) {
+          connection.collection(collectionName).insert(doc, currentFlow.add());
+          return currentFlow.wait();
+        },
         count: function(q) {
           connection.collection(collectionName).count(q, currentFlow.add());
+          return currentFlow.wait();
+        },
+        remove: function(q) {
+          connection.collection(collectionName).remove(q, currentFlow.add());
           return currentFlow.wait();
         }
       };
