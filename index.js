@@ -1,17 +1,19 @@
-var repl = require('repl');
-var mongodb = require('mongodb');
-var commander = require('commander');
-var vm = require('vm');
-var _ = require('underscore');
-var asyncblock = require('asyncblock');
+var repl = require('repl')
+, mongodb = require('mongodb')
+, commander = require('commander')
+, vm = require('vm')
+, _ = require('underscore')
+, asyncblock = require('asyncblock')
+, util = require('util')
+, RSHelpers = require('./rshelpers.js');
 
-var uri = 'mongodb://localhost:27017/test';
 var currentFlow;
 var lastCursor;
+var rsName;
 
 commander.
-  option('-u, --uri [uri]', 'Database URI [mongodb://localhost:27017]',
-    'mongodb://localhost:27017').
+  option('-u, --uri [uri]', 'Database URI [mongodb://localhost:27017/test]',
+         'mongodb://localhost:27017/test').
   option('-f, --file [file]', 'File to run (optional)').
   parse(process.argv);
 
@@ -30,28 +32,50 @@ function ShellIterator(cursor) {
   });
 }
 
-mongodb.MongoClient.connect(commander.uri, function(error, connection) {
+mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
+  if (error) {
+    throw error;
+  }
+  rsName = dbConn.serverConfig.options.rs_name;
+
   var db = Proxy.create({
-    get: function(proxy, collectionName) {
+    getOwnPropertyNames: function() {
+      dbConn.collectionNames(currentFlow.add());
+
+      return currentFlow.wait().map(function(obj) {
+        var dbName = obj.name;
+        return dbName.substr(dbName.indexOf(".")+1);
+      });
+    }
+    , getOwnPropertyDescriptor: function(proxy, collectionName) {
+      return { "writable": false
+               , "enumerable": false
+               , "configurable": true };
+    }
+    , getPropertyDescriptor: function(proxy, collectionName) {
+      return this.getOwnPropertyDescriptor(proxy, collectionName);
+    }
+    , get: function(proxy, collectionName) {
       var wrapper = {
+        // can't access collection names with a period (like system.indexes)
         find: function(q) {
-          connection.collection(collectionName).find(q, currentFlow.add());
+          dbConn.collection(collectionName).find(q, currentFlow.add());
           return new ShellIterator(currentFlow.wait());
         },
         findOne: function(q) {
-          connection.collection(collectionName).findOne(q, currentFlow.add());
+          dbConn.collection(collectionName).findOne(q, currentFlow.add());
           return currentFlow.wait();
         },
         insert: function(doc) {
-          connection.collection(collectionName).insert(doc, currentFlow.add());
+          dbConn.collection(collectionName).insert(doc, currentFlow.add());
           return currentFlow.wait();
         },
         count: function(q) {
-          connection.collection(collectionName).count(q, currentFlow.add());
+          dbConn.collection(collectionName).count(q, currentFlow.add());
           return currentFlow.wait();
         },
         remove: function(q) {
-          connection.collection(collectionName).remove(q, currentFlow.add());
+          dbConn.collection(collectionName).remove(q, currentFlow.add());
           return currentFlow.wait();
         }
       };
@@ -73,12 +97,12 @@ mongodb.MongoClient.connect(commander.uri, function(error, connection) {
     });
   } else {
     var replServer = repl.start({
-      prompt: 'nodeshell> ',
+      prompt: rsName === undefined ? 'nodeshell> ' : util.format('nodeshell:%s> ', rsName),
       eval: function(cmd, context, filename, callback) {
         asyncblock(function(flow) {
           context.flow = flow;
           currentFlow = flow;
-          var result = vm.runInContext(cmd, context);
+          var result = vm.runInContext(cmd.trim(), context);
           if (result instanceof ShellIterator) {
             lastCursor = result;
             var documents = [];
@@ -100,12 +124,15 @@ mongodb.MongoClient.connect(commander.uri, function(error, connection) {
         }, function(error) {
           if (error) {
             console.log('Error - ' + error);
+            callback(null);
           }
         });
       }
     });
 
     replServer.context.db = db;
+    replServer.context.rs = new RSHelpers(replServer, dbConn);
+
     Object.defineProperty(replServer.context, 'it', {
       get: function() {
         return lastCursor;
