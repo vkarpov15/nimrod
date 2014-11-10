@@ -1,6 +1,6 @@
-var mongodb = require('mongodb')
-, asyncblock = require('asyncblock')
-, util = require('util');
+var mongodb = require('mongodb');
+var asyncblock = require('asyncblock');
+var util = require('util');
 
 function cleanupDocs(res) {
   // TODO: need a better solution for this
@@ -19,7 +19,7 @@ function RSHelpers(repl, db) {
 
   this.initiate = function(conf) {
     var flow = this.replContext.flow;
-    this.db.admin().command({ replSetInitiate: conf }, flow.add());
+    this.db.admin().command({ "replSetInitiate": conf }, flow.add());
     return cleanupDocs(flow.wait());
   };
 
@@ -92,8 +92,8 @@ function RSHelpers(repl, db) {
 
   this.add = function (hostport, arb) {
     var flow = this.replContext.flow;
-    var cfg = hostport
-    , conf = this.conf();
+    var cfg = hostport;
+    var conf = this.conf();
     if (!conf) {
       throw Error("no config object retrievable from local.system.replset"); 
     }
@@ -148,16 +148,16 @@ function RSHelpers(repl, db) {
         propNames.splice(propNames.indexOf("replContext"), 1);
       }
       return propNames;      
-    }    
-    , getOwnPropertyDescriptor: function(proxy, key) {
+    },
+    getOwnPropertyDescriptor: function(proxy, key) {
       return { "writable": false
                , "enumerable": false
                , "configurable": true };
-    }
-    , getPropertyDescriptor: function(proxy, key) {
+    },
+    getPropertyDescriptor: function(proxy, key) {
       return this.getOwnPropertyDescriptor(proxy, key);
-    }
-    , get: function(proxy, key) {
+    },
+    get: function(proxy, key) {
       return _this[key];
     }
   });
