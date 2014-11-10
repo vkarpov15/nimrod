@@ -1,11 +1,11 @@
-var repl = require('repl')
-, mongodb = require('mongodb')
-, commander = require('commander')
-, vm = require('vm')
-, _ = require('underscore')
-, asyncblock = require('asyncblock')
-, util = require('util')
-, RSHelpers = require('./rshelpers.js');
+var repl = require('repl');
+var mongodb = require('mongodb');
+var commander = require('commander');
+var vm = require('vm');
+var _ = require('underscore');
+var asyncblock = require('asyncblock');
+var util = require('util');
+var RSHelpers = require('./rshelpers.js');
 
 var currentFlow;
 var lastCursor;
@@ -46,18 +46,18 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
         var dbName = obj.name;
         return dbName.substr(dbName.indexOf(".")+1);
       });
-    }
-    , getOwnPropertyDescriptor: function(proxy, collectionName) {
-      return { "writable": false
-               , "enumerable": false
-               , "configurable": true };
-    }
-    , getPropertyDescriptor: function(proxy, collectionName) {
+    }, 
+    getOwnPropertyDescriptor: function(proxy, collectionName) {
+      return { "writable": false,
+               "enumerable": false,
+               "configurable": true
+             };
+    },
+    getPropertyDescriptor: function(proxy, collectionName) {
       return this.getOwnPropertyDescriptor(proxy, collectionName);
-    }
-    , get: function(proxy, collectionName) {
-      var wrapper = {
-        // can't access collection names with a period (like system.indexes)
+    },
+    get: function(proxy, collectionName) {
+      var crud = {
         find: function(q) {
           dbConn.collection(collectionName).find(q, currentFlow.add());
           return new ShellIterator(currentFlow.wait());
@@ -80,7 +80,35 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
         }
       };
 
-      return wrapper;
+      var crudOps = Object.keys(crud);
+      var _this = this;
+      return Proxy.create({
+        getOwnPropertyNames: function() {
+          var collNames = _this.getOwnPropertyNames();
+          var matchColls = collNames.filter(function(collName) {
+            return collName != collectionName &&
+              collName.indexOf(collectionName) != -1;
+          }).map(function(collName) {
+            return collName.substr(collName.indexOf(".")+1);
+          });
+          if (matchColls.length) {
+            return matchColls;
+          }
+          return crudOps;
+        },
+        getOwnPropertyDescriptor: function(proxy, op) {
+          return _this.getOwnPropertyDescriptor(proxy, op);
+        },
+        getPropertyDescriptor: function(proxy, op) {
+          return _this.getPropertyDescriptor(proxy, op);
+        },
+        get: function(proxy, op) {
+          if (crudOps.indexOf(op) != -1) {
+            return crud[op];
+          }
+          return _this.get(proxy, collectionName+"."+op);
+        }
+      });
     }
   });
 
@@ -97,7 +125,9 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     });
   } else {
     var replServer = repl.start({
-      prompt: rsName === undefined ? 'nodeshell> ' : util.format('nodeshell:%s> ', rsName),
+      prompt: rsName === undefined ?
+        'nodeshell> ' :
+        util.format('nodeshell:%s> ', rsName),
       eval: function(cmd, context, filename, callback) {
         asyncblock(function(flow) {
           context.flow = flow;
