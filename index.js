@@ -1,11 +1,11 @@
-var repl = require('repl')
-, mongodb = require('mongodb')
-, commander = require('commander')
-, vm = require('vm')
-, _ = require('underscore')
-, asyncblock = require('asyncblock')
-, util = require('util')
-, RSHelpers = require('./rshelpers.js');
+var repl = require('repl');
+var mongodb = require('mongodb');
+var commander = require('commander');
+var vm = require('vm');
+var _ = require('underscore');
+var asyncblock = require('asyncblock');
+var util = require('util');
+var RSHelpers = require('./rshelpers.js');
 
 var currentFlow;
 var lastCursor;
@@ -46,18 +46,18 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
         var dbName = obj.name;
         return dbName.substr(dbName.indexOf(".")+1);
       });
-    }
-    , getOwnPropertyDescriptor: function(proxy, collectionName) {
-      return { "writable": false
-               , "enumerable": false
-               , "configurable": true };
-    }
-    , getPropertyDescriptor: function(proxy, collectionName) {
+    },
+    getOwnPropertyDescriptor: function(proxy, collectionName) {
+      return { "writable": false,
+               "enumerable": false,
+               "configurable": true };
+    },
+    getPropertyDescriptor: function(proxy, collectionName) {
       return this.getOwnPropertyDescriptor(proxy, collectionName);
-    }
-    , get: function(proxy, collectionName) {
+    },
+    get: function(proxy, collectionName) {
       var wrapper = {
-        // can't access collection names with a period (like system.indexes)
+        // can't access collection names with a period (like "system.indexes")
         find: function(q) {
           dbConn.collection(collectionName).find(q, currentFlow.add());
           return new ShellIterator(currentFlow.wait());
