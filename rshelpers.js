@@ -1,5 +1,3 @@
-var mongodb = require('mongodb');
-var asyncblock = require('asyncblock');
 var util = require('util');
 
 function cleanupDocs(res) {
@@ -7,8 +5,8 @@ function cleanupDocs(res) {
   if (!res) {
     return null;
   }
-  if ('documents' in res && 'cursorId' in res) {
-    res = res.documents;
+  if ('cursorId' in res && ('documents' in res || 'items' in res)) {
+    res = res.documents || res.items;
   }
   if (res instanceof Array && res.length == 1) {
     res = res[0];        
@@ -16,8 +14,8 @@ function cleanupDocs(res) {
   return res;
 }
 
-function RSHelpers(repl, db) {  
-  this.db = db;
+function RSHelpers(repl, conn) {
+  this.db = conn.db;
   this.replContext = repl.context;  
 
   this.initiate = function(conf) {
@@ -166,4 +164,5 @@ function RSHelpers(repl, db) {
   });
 };
 
-module.exports = RSHelpers;
+exports.RSHelpers = RSHelpers;
+exports.cleanupDocs = cleanupDocs;
