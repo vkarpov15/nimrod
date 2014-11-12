@@ -5,11 +5,14 @@ var vm = require('vm');
 var _ = require('underscore');
 var asyncblock = require('asyncblock');
 var util = require('util');
-var RSHelpers = require('./rshelpers.js');
+var rs = require('./rshelpers.js');
+var Ext = require('./extcommands.js');
 
 var currentFlow;
 var lastCursor;
 var rsName;
+var ext;
+var connObj = {};
 
 commander.
   option('-u, --uri [uri]', 'Database URI [mongodb://localhost:27017/test]',
@@ -36,22 +39,23 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
   if (error) {
     throw error;
   }
-  rsName = dbConn.serverConfig.options.rs_name;
+  connObj.db = dbConn;
+  ext = Ext(connObj);
+  rsName = connObj.db.serverConfig.options.rs_name;
 
   var db = Proxy.create({
     getOwnPropertyNames: function() {
-      dbConn.collectionNames(currentFlow.add());
+      connObj.db.collectionNames(currentFlow.add());
 
       return currentFlow.wait().map(function(obj) {
-        var dbName = obj.name;
-        return dbName.substr(dbName.indexOf(".")+1);
+        var collName = obj.name;
+        return collName.substr(collName.indexOf(".")+1);
       });
     }, 
     getOwnPropertyDescriptor: function(proxy, collectionName) {
       return { "writable": false,
                "enumerable": false,
-               "configurable": true
-             };
+               "configurable": true };
     },
     getPropertyDescriptor: function(proxy, collectionName) {
       return this.getOwnPropertyDescriptor(proxy, collectionName);
@@ -59,23 +63,23 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     get: function(proxy, collectionName) {
       var crud = {
         find: function(q) {
-          dbConn.collection(collectionName).find(q, currentFlow.add());
+          connObj.db.collection(collectionName).find(q, currentFlow.add());
           return new ShellIterator(currentFlow.wait());
         },
         findOne: function(q) {
-          dbConn.collection(collectionName).findOne(q, currentFlow.add());
+          connObj.db.collection(collectionName).findOne(q, currentFlow.add());
           return currentFlow.wait();
         },
         insert: function(doc) {
-          dbConn.collection(collectionName).insert(doc, currentFlow.add());
+          connObj.db.collection(collectionName).insert(doc, currentFlow.add());
           return currentFlow.wait();
         },
         count: function(q) {
-          dbConn.collection(collectionName).count(q, currentFlow.add());
+          connObj.db.collection(collectionName).count(q, currentFlow.add());
           return currentFlow.wait();
         },
         remove: function(q) {
-          dbConn.collection(collectionName).remove(q, currentFlow.add());
+          connObj.db.collection(collectionName).remove(q, currentFlow.add());
           return currentFlow.wait();
         }
       };
@@ -132,7 +136,13 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
         asyncblock(function(flow) {
           context.flow = flow;
           currentFlow = flow;
-          var result = vm.runInContext(cmd.trim(), context);
+
+          var cmdToRun = cmd.trim();
+          var result;
+          if (!ext.execute(cmdToRun, currentFlow)) {
+            result = vm.runInContext(cmdToRun, context);
+          }
+
           if (result instanceof ShellIterator) {
             lastCursor = result;
             var documents = [];
@@ -161,7 +171,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     });
 
     replServer.context.db = db;
-    replServer.context.rs = new RSHelpers(replServer, dbConn);
+    replServer.context.rs = new rs.RSHelpers(replServer, connObj);
 
     Object.defineProperty(replServer.context, 'it', {
       get: function() {
