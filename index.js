@@ -81,6 +81,14 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
         remove: function(q) {
           connObj.db.collection(collectionName).remove(q, currentFlow.add());
           return currentFlow.wait();
+        },
+        update: function(q, obj, options) {
+          if (!options) {
+            options = {};
+          }
+          dbConn.collection(collectionName).
+            update(q, obj, options, currentFlow.add());
+          return currentFlow.wait();
         }
       };
 
