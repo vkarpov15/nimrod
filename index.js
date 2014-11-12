@@ -40,7 +40,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     throw error;
   }
   connObj.db = dbConn;
-  ext = new Ext(connObj);
+  ext = Ext(connObj);
   rsName = connObj.db.serverConfig.options.rs_name;
 
   var db = Proxy.create({
