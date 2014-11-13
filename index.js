@@ -7,12 +7,14 @@ var asyncblock = require('asyncblock');
 var util = require('util');
 var rs = require('./rshelpers.js');
 var Ext = require('./extcommands.js');
+var CollMethods = require('./collectionmethods.js');
+var ShellIterator = CollMethods.ShellIterator;
 
-var currentFlow;
 var lastCursor;
 var rsName;
 var ext;
-var connObj = {};
+// store 'flow' and 'db'
+var _conn = {};
 
 commander.
   option('-u, --uri [uri]', 'Database URI [mongodb://localhost:27017/test]',
@@ -20,79 +22,37 @@ commander.
   option('-f, --file [file]', 'File to run (optional)').
   parse(process.argv);
 
-function ShellIterator(cursor) {
-  var _this = this;
-  this.next = function() {
-    cursor.nextObject(currentFlow.add());
-    return currentFlow.wait();
-  };
-
-  _.each(['sort', 'limit', 'skip'], function(fn) {
-    _this[fn] = function() {
-      cursor[fn].apply(cursor, arguments);
-      return _this;
-    };
-  });
-}
-
 mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
   if (error) {
     throw error;
   }
-  connObj.db = dbConn;
-  ext = Ext(connObj);
-  rsName = connObj.db.serverConfig.options.rs_name;
+  _conn.db = dbConn;
+  coll = CollMethods.Instance(_conn);
+  ext = Ext(_conn);
+  rsName = _conn.db.serverConfig.options.rs_name;
 
   var db = Proxy.create({
     getOwnPropertyNames: function() {
-      connObj.db.collectionNames(currentFlow.add());
+      _conn.db.collectionNames(_conn.flow.add());
 
-      return currentFlow.wait().map(function(obj) {
+      return _conn.flow.wait().map(function(obj) {
         var collName = obj.name;
-        return collName.substr(collName.indexOf(".")+1);
+        return collName.substr(collName.indexOf('.')+1);
       });
-    }, 
+    },
     getOwnPropertyDescriptor: function(proxy, collectionName) {
-      return { "writable": false,
-               "enumerable": false,
-               "configurable": true };
+      return { 'writable': false,
+               'enumerable': false,
+               'configurable': true
+             };
     },
     getPropertyDescriptor: function(proxy, collectionName) {
       return this.getOwnPropertyDescriptor(proxy, collectionName);
     },
     get: function(proxy, collectionName) {
-      var crud = {
-        find: function(q) {
-          connObj.db.collection(collectionName).find(q, currentFlow.add());
-          return new ShellIterator(currentFlow.wait());
-        },
-        findOne: function(q) {
-          connObj.db.collection(collectionName).findOne(q, currentFlow.add());
-          return currentFlow.wait();
-        },
-        insert: function(doc) {
-          connObj.db.collection(collectionName).insert(doc, currentFlow.add());
-          return currentFlow.wait();
-        },
-        count: function(q) {
-          connObj.db.collection(collectionName).count(q, currentFlow.add());
-          return currentFlow.wait();
-        },
-        remove: function(q) {
-          connObj.db.collection(collectionName).remove(q, currentFlow.add());
-          return currentFlow.wait();
-        },
-        update: function(q, obj, options) {
-          if (!options) {
-            options = {};
-          }
-          dbConn.collection(collectionName).
-            update(q, obj, options, currentFlow.add());
-          return currentFlow.wait();
-        }
-      };
+      var collOps = coll(collectionName);
+      var collOpKeys = Object.keys(collOps);
 
-      var crudOps = Object.keys(crud);
       var _this = this;
       return Proxy.create({
         getOwnPropertyNames: function() {
@@ -101,12 +61,12 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
             return collName != collectionName &&
               collName.indexOf(collectionName) != -1;
           }).map(function(collName) {
-            return collName.substr(collName.indexOf(".")+1);
+            return collName.substr(collName.indexOf('.')+1);
           });
           if (matchColls.length) {
-            return matchColls;
+            return matchColls.sort();
           }
-          return crudOps;
+          return collOpKeys.sort();
         },
         getOwnPropertyDescriptor: function(proxy, op) {
           return _this.getOwnPropertyDescriptor(proxy, op);
@@ -115,10 +75,10 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
           return _this.getPropertyDescriptor(proxy, op);
         },
         get: function(proxy, op) {
-          if (crudOps.indexOf(op) != -1) {
-            return crud[op];
+          if (collOpKeys.indexOf(op) != -1) {
+            return collOps[op];
           }
-          return _this.get(proxy, collectionName+"."+op);
+          return _this.get(proxy, collectionName+'.'+op);
         }
       });
     }
@@ -128,7 +88,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     asyncblock(function(flow) {
       this.db = db;
       this.flow = flow;
-      currentFlow = flow;
+      conn.flow = flow;
       var script = require('fs').readFileSync(commander.file);
       var result =
         vm.runInThisContext(script.toString());
@@ -143,11 +103,11 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
       eval: function(cmd, context, filename, callback) {
         asyncblock(function(flow) {
           context.flow = flow;
-          currentFlow = flow;
+          _conn.flow = flow;
 
           var cmdToRun = cmd.trim();
           var result;
-          if (!ext.execute(cmdToRun, currentFlow)) {
+          if (!ext.execute(cmdToRun)) {
             result = vm.runInContext(cmdToRun, context);
           }
 
@@ -179,7 +139,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     });
 
     replServer.context.db = db;
-    replServer.context.rs = new rs.RSHelpers(replServer, connObj);
+    replServer.context.rs = new rs.RSHelpers(_conn);
 
     Object.defineProperty(replServer.context, 'it', {
       get: function() {
