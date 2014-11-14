@@ -1,9 +1,10 @@
 var rs = require('./rshelpers.js');
+var helpers = require('./nimrodhelpers.js');
 
 module.exports = function(conn) {
 
   return {
-    execute: function(cmd, flow) {
+    execute: function(cmd) {
       var arg;
       // 'use' shell helper
       arg = oneArg(/use (\w+)/, cmd);
@@ -19,17 +20,16 @@ module.exports = function(conn) {
         break;
 
       case 'users':
-        conn.db.db("admin")
-          .collection("system.users").find({}, flow.add());
-        var results = rs.cleanupDocs(flow.wait());
+        conn.db.db("admin").collection("system.users").find({}, conn.flow.add());
+        var results = helpers.cleanupDocs(conn.flow.wait());
         results.forEach(function(user) {
           console.log(user);
         });
         break;
       case 'roles':
         conn.db.db("admin")
-          .collection("system.roles").find({}, flow.add());
-        var results = rs.cleanupDocs(flow.wait());
+          .collection("system.roles").find({}, conn.flow.add());
+        var results = helpers.cleanupDocs(conn.flow.wait());
         results.forEach(function(user) {
           console.log(user);
         });
@@ -45,8 +45,8 @@ module.exports = function(conn) {
 
       case 'databases':
       case 'dbs':
-        conn.db.admin().command({'listDatabases':1}, flow.add());
-        var dbs = rs.cleanupDocs(flow.wait());
+        conn.db.admin().command({'listDatabases':1}, conn.flow.add());
+        var dbs = helpers.cleanupDocs(conn.flow.wait());
         var dbInfo = [];
         var maxNameLength = 0;
         var maxGbDigits = 0;
@@ -92,8 +92,8 @@ module.exports = function(conn) {
 
       case 'tables':
       case 'collections':
-        conn.db.collectionNames(flow.add());
-        flow.wait().forEach(function(obj) {
+        conn.db.collectionNames(conn.flow.add());
+        conn.flow.wait().forEach(function(obj) {
           var collName = obj.name;
           console.log(collName.substr(collName.indexOf(".")+1));
         });
