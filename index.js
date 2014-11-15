@@ -100,6 +100,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
       prompt: rsName === undefined ?
         'nodeshell> ' :
         util.format('nodeshell:%s> ', rsName),
+      ignoreUndefined: true,
       eval: function(cmd, context, filename, callback) {
         asyncblock(function(flow) {
           context.flow = flow;
@@ -126,6 +127,9 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
               return callback(null, 'Type "it" for more');
             }
             return callback(null, 'No documents left');
+          } if (result instanceof Function) {
+            console.log(result.toString());
+            return callback(null, undefined);
           } else {
             callback(null, result);
           }
