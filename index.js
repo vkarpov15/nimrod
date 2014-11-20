@@ -5,9 +5,9 @@ var vm = require('vm');
 var _ = require('underscore');
 var asyncblock = require('asyncblock');
 var util = require('util');
-var rs = require('./rshelpers.js');
-var Ext = require('./extcommands.js');
-var CollMethods = require('./collectionmethods.js');
+var rs = require('./lib/rshelpers.js');
+var Ext = require('./lib/extcommands.js');
+var CollMethods = require('./lib/collectionmethods.js');
 var ShellIterator = CollMethods.ShellIterator;
 
 var lastCursor;
