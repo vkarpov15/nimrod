@@ -5,9 +5,10 @@ var vm = require('vm');
 var _ = require('underscore');
 var asyncblock = require('asyncblock');
 var util = require('util');
-var rs = require('./rshelpers.js');
-var Ext = require('./extcommands.js');
-var CollMethods = require('./collectionmethods.js');
+var rs = require('./lib/rshelpers.js');
+var Ext = require('./lib/extcommands.js');
+var CollMethods = require('./lib/collectionmethods.js');
+var DBMethods = require('./lib/dbmethods.js');
 var ShellIterator = CollMethods.ShellIterator;
 
 var lastCursor;
@@ -27,9 +28,12 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     throw error;
   }
   _conn.db = dbConn;
-  coll = CollMethods.Instance(_conn);
   ext = Ext(_conn);
   rsName = _conn.db.serverConfig.options.rs_name;
+
+  var coll = CollMethods.Instance(_conn);
+  var dbMethods = DBMethods(_conn);
+  var dbMethodKeys = Object.keys(dbMethods);
 
   var db = Proxy.create({
     getOwnPropertyNames: function() {
@@ -38,7 +42,9 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
       return _conn.flow.wait().map(function(obj) {
         var collName = obj.name;
         return collName.substr(collName.indexOf('.')+1);
-      });
+      }).concat(dbMethodKeys.map(function(methodName) {
+        return util.format("%s(", methodName);
+      }));
     },
     getOwnPropertyDescriptor: function(proxy, collectionName) {
       return { 'writable': false,
@@ -49,24 +55,36 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     getPropertyDescriptor: function(proxy, collectionName) {
       return this.getOwnPropertyDescriptor(proxy, collectionName);
     },
-    get: function(proxy, collectionName) {
-      var collOps = coll(collectionName);
-      var collOpKeys = Object.keys(collOps);
+    get: function(proxy, op1) {
+      if (dbMethodKeys.indexOf(op1) !== -1) {
+        return dbMethods[op1];
+      }
 
+      var collOps = coll(op1);
+      var collOpKeys = Object.keys(collOps);
       var _this = this;
       return Proxy.create({
         getOwnPropertyNames: function() {
           var collNames = _this.getOwnPropertyNames();
           var matchColls = collNames.filter(function(collName) {
-            return collName != collectionName &&
-              collName.indexOf(collectionName) != -1;
+            return collName !== op1 &&
+              collName.indexOf(op1) !== -1;
           }).map(function(collName) {
-            return collName.substr(collName.indexOf('.')+1);
+            var ext = collName.substr(collName.indexOf('.')+1);
+            var subExt = ext.indexOf(op1);
+            if (subExt != -1) {
+              return "";
+            }
+            return ext;
+          }).filter(function(collName) {
+            return collName.length;
           });
           if (matchColls.length) {
-            return matchColls.sort();
+            return matchColls;
           }
-          return collOpKeys.sort();
+          return collOpKeys.map(function(collOpKey) {
+            return util.format("%s(", collOpKey);
+          });
         },
         getOwnPropertyDescriptor: function(proxy, op) {
           return _this.getOwnPropertyDescriptor(proxy, op);
@@ -74,11 +92,11 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
         getPropertyDescriptor: function(proxy, op) {
           return _this.getPropertyDescriptor(proxy, op);
         },
-        get: function(proxy, op) {
-          if (collOpKeys.indexOf(op) != -1) {
-            return collOps[op];
+        get: function(proxy, op2) {
+          if (collOpKeys.indexOf(op2) !== -1) {
+            return collOps[op2];
           }
-          return _this.get(proxy, collectionName+'.'+op);
+          return _this.get(proxy, op1+'.'+op2);
         }
       });
     }
