@@ -61,9 +61,12 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
         return this.getOwnPropertyDescriptor(proxy, collectionName);
       },
       get: function(proxy, op1) {
-        if (op1 == "getConn") {
+        if (op1 === "getConn") {
           return function() { return conn; };
+        } else if (op1 === "_name") {
+          return conn.db.databaseName;
         }
+
         if (dbMethodKeys.indexOf(op1) !== -1) {
           return dbMethods[op1];
         }
@@ -118,14 +121,19 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     rs:  new rs.RSHelpers(_conn),
     assert: assert,
     print: console.log,
-    Array: helpers.Array,
-    Object: helpers.Object,
-    tojson: function(jsObj) { return JSON.stringify(jsObj, null, 4); }
   };
+
+  ["Array", "Object", "tojson", "friendlyEqual", "jsTest"]
+  .forEach(function(k) {
+    initContext[k] = helpers[k];
+  });
+
   if (commander.file) {
     asyncblock(function(flow) {
+      flow.addNoError = function() { return this.add({ignoreError: true}); };
       this.db = db;
       this.flow = flow;
+
       conns.forEach(function(conn) {
         conn.flow = flow;
       });
@@ -144,6 +152,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
       ignoreUndefined: true,
       eval: function(cmd, context, filename, callback) {
         asyncblock(function(flow) {
+          flow.addNoError = function() { return this.add({ignoreError: true}); };
           context.flow = flow;
           conns.forEach(function(conn) {
             conn.flow = flow;
@@ -180,6 +189,8 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
           } if (result instanceof Function) {
             console.log(result.toString());
             return callback(null, undefined);
+          } else if (result instanceof Error && result.name == 'MongoError') {
+            throw result;
           } else {
             callback(null, result);
           }
