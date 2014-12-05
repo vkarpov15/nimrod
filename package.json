@@ -1,6 +1,6 @@
 {
-  "name": "nodeshell",
-  "version": "0.0.0",
+  "name": "nimrod",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -16,5 +16,9 @@
   },
   "engines": { "node": "0.11.10" },
   "author": "",
-  "license": "ISC"
+  "license": "Apache 2.0",
+  "repository" : {
+    "type" : "git",
+    "url" : "git://github.com/vkarpov15/nimrod.git"
+  }
 }
