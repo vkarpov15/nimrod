@@ -5,12 +5,12 @@ var vm = require('vm');
 var _ = require('underscore');
 var asyncblock = require('asyncblock');
 var util = require('util');
-var assert = require('./lib/assert');
 var rs = require('./lib/rshelpers');
 var helpers = require('./lib/nimrodhelpers');
 var Ext = require('./lib/extcommands');
 var CollMethods = require('./lib/collectionmethods');
 var DBMethods = require('./lib/dbmethods');
+var bsontypes = require("./lib/bsontypes");
 var ShellIterator = CollMethods.ShellIterator;
 
 var lastCursor;
@@ -36,7 +36,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
 
   // used to create 'db' proxy
   var dbLit = function(conn) {
-    var coll = CollMethods.Instance(conn);
+    var coll = CollMethods.Instance(dbLit, conn);
     var dbMethods = DBMethods(dbLit, conn);
     var dbMethodKeys = Object.keys(dbMethods);
 
@@ -119,18 +119,25 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
   var initContext = {
     db: db,
     rs:  new rs.RSHelpers(_conn),
-    assert: assert,
+    Random: require("./lib/random"),
+    assert: require("./lib/assert"),
     print: console.log,
+    BulkWriteResult: CollMethods.BulkWriteResult,
   };
 
-  ["Array", "Object", "tojson", "friendlyEqual", "jsTest"]
+  ["Array", "Object", "tojson", "friendlyEqual",
+   "jsTest", "printjson", "doassert"]
   .forEach(function(k) {
     initContext[k] = helpers[k];
   });
 
+  for (var k in bsontypes) {
+    initContext[k] = bsontypes[k];
+  }
+
   if (commander.file) {
     asyncblock(function(flow) {
-      flow.addNoError = function() { return this.add({ignoreError: true}); };
+      flow = helpers.wrapFlow(flow);
       this.db = db;
       this.flow = flow;
 
@@ -152,8 +159,9 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
       ignoreUndefined: true,
       eval: function(cmd, context, filename, callback) {
         asyncblock(function(flow) {
-          flow.addNoError = function() { return this.add({ignoreError: true}); };
+          flow = helpers.wrapFlow(flow);
           context.flow = flow;
+
           conns.forEach(function(conn) {
             conn.flow = flow;
           });
@@ -189,8 +197,6 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
           } if (result instanceof Function) {
             console.log(result.toString());
             return callback(null, undefined);
-          } else if (result instanceof Error && result.name == 'MongoError') {
-            throw result;
           } else {
             callback(null, result);
           }
