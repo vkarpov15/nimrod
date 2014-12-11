@@ -147,9 +147,11 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
         conn.flow = flow;
       });
 
+      var context = vm.createContext(initContext);
+      context.flow = flow;
       var script = require('fs').readFileSync(commander.file);
       var result = vm.runInContext(script.toString(),
-                                   vm.createContext(initContext));
+                                   context);
       console.log('Done executing script ' + commander.file + '!');
       process.exit(0);
     });
