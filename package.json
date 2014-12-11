@@ -1,6 +1,6 @@
 {
   "name": "nimrod",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "NodeJS-infused MongoDB shell - use require() and synchronous db.collection.find() in the same environment",
   "main": "index.js",
   "scripts": {
