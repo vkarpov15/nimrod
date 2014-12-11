@@ -123,6 +123,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     assert: require("./lib/assert"),
     print: console.log,
     BulkWriteResult: CollMethods.BulkWriteResult,
+    require: require
   };
 
   ["Array", "Object", "tojson", "friendlyEqual",
