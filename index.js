@@ -197,7 +197,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
             if (documents.length >= 10) {
               return callback(null, 'Type "it" for more');
             }
-            return callback(null, 'No documents left');
+            return callback(null, undefined);
           } if (result instanceof Function) {
             console.log(result.toString());
             return callback(null, undefined);
