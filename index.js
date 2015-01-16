@@ -32,7 +32,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
   }
   _conn.db = dbConn;
   ext = Ext(_conn);
-  rsName = _conn.db.serverConfig.options.replicaSet;
+  rsName = '';
 
   // used to create 'db' proxy
   var dbLit = function(conn) {
