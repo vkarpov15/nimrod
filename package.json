@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "acquit": "0.0.3",
+    "gulp": "3.8.10",
     "moment": "2.4.0"
   },
   "engines": { "node": ">=0.11.10" },
