@@ -10,7 +10,7 @@ var helpers = require('./lib/nimrodhelpers');
 var Ext = require('./lib/extcommands');
 var CollMethods = require('./lib/collectionmethods');
 var DBMethods = require('./lib/dbmethods');
-var bsontypes = require("./lib/bsontypes");
+var bsontypes = require('./lib/bsontypes');
 var ShellIterator = CollMethods.ShellIterator;
 
 var lastCursor;
@@ -32,7 +32,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
   }
   _conn.db = dbConn;
   ext = Ext(_conn);
-  rsName = _conn.db.serverConfig.options.rs_name;
+  rsName = _conn.db.serverConfig.options.replicaSet;
 
   // used to create 'db' proxy
   var dbLit = function(conn) {
@@ -46,24 +46,25 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
 
         return conn.flow.wait().map(function(obj) {
           var collName = obj.name;
-          return collName.substr(collName.indexOf('.')+1);
+          return collName.substr(collName.indexOf('.') + 1);
         }).concat(dbMethodKeys.map(function(methodName) {
-          return util.format("%s(", methodName);
+          return util.format('%s(', methodName);
         }));
       },
       getOwnPropertyDescriptor: function(proxy, collectionName) {
-        return { 'writable': false,
-                 'enumerable': false,
-                 'configurable': true
-               };
+        return {
+          writable: false,
+          enumerable: false,
+          configurable: true
+        };
       },
       getPropertyDescriptor: function(proxy, collectionName) {
         return this.getOwnPropertyDescriptor(proxy, collectionName);
       },
       get: function(proxy, op1) {
-        if (op1 === "getConn") {
+        if (op1 === 'getConn') {
           return function() { return conn; };
-        } else if (op1 === "_name") {
+        } else if (op1 === '_name') {
           return conn.db.databaseName;
         }
 
@@ -81,10 +82,10 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
               return collName !== op1 &&
                 collName.indexOf(op1) !== -1;
             }).map(function(collName) {
-              var ext = collName.substr(collName.indexOf('.')+1);
+              var ext = collName.substr(collName.indexOf('.') + 1);
               var subExt = ext.indexOf(op1);
               if (subExt != -1) {
-                return "";
+                return '';
               }
               return ext;
             }).filter(function(collName) {
@@ -94,7 +95,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
               return matchColls;
             }
             return collOpKeys.map(function(collOpKey) {
-              return util.format("%s(", collOpKey);
+              return util.format('%s(', collOpKey);
             });
           },
           getOwnPropertyDescriptor: function(proxy, op) {
@@ -107,7 +108,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
             if (collOpKeys.indexOf(op2) !== -1) {
               return collOps[op2];
             }
-            return _this.get(proxy, op1+'.'+op2);
+            return _this.get(proxy, op1 + '.' + op2);
           }
         });
       }
@@ -119,16 +120,16 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
   var initContext = {
     db: db,
     rs:  new rs.RSHelpers(_conn),
-    Random: require("./lib/random"),
-    assert: require("./lib/assert"),
+    Random: require('./lib/random'),
+    assert: require('./lib/assert'),
     print: console.log,
     BulkWriteResult: CollMethods.BulkWriteResult,
     require: require,
     process: process
   };
 
-  ["Array", "Object", "tojson", "friendlyEqual",
-   "jsTest", "printjson", "doassert"]
+  ['Array', 'Object', 'tojson', 'friendlyEqual',
+   'jsTest', 'printjson', 'doassert']
   .forEach(function(k) {
     initContext[k] = helpers[k];
   });
@@ -177,7 +178,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
           }
 
           if (result && result.getConn &&
-              typeof result.getConn == "function") {
+              typeof result.getConn == 'function') {
             var newConn = result.getConn();
             newConn.flow = flow;
             conns.push(newConn);
