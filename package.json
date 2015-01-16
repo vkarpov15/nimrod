@@ -18,7 +18,7 @@
     "acquit": "0.0.3",
     "moment": "2.4.0"
   },
-  "engines": { "node": "0.11.10" },
+  "engines": { "node": ">=0.11.10" },
   "author": "",
   "license": "Apache 2.0",
   "repository" : {
