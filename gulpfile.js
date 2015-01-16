@@ -20,10 +20,22 @@ gulp.task('jstests', ['clean'], function() {
     var body = JSON.parse(body);
     var allTests = body.results.collection1;
 
+    var numDone = 0;
     for (var i = 0; i < allTests.length; ++i) {
       var test = allTests[i];
       console.log('Downloading ' + test.testName.text);
-      request.get(test.testName.href).pipe(fs.createWriteStream('./jstests/' + test.testName.text));
+      var href = test.testName.href.
+        replace('github.com', 'raw.githubusercontent.com').
+        replace('/blob', '');
+      var stream = request.get(href);
+      stream.pipe(fs.createWriteStream('./jstests/' + test.testName.text));
+      stream.on('end', function() {
+        if (++numDone >= allTests.length) {
+          setTimeout(function() {
+            process.exit(0);
+          }, 5000);
+        }
+      });
     }
   });
 });
