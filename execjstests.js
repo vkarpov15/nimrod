@@ -9,7 +9,7 @@ jstests.forEach(function(file) {
   console.log('Executing: ' + file);
 
   try {
-    childProcess.execSync('node --harmony index.js --file ./jstests/' + file);
+    childProcess.execSync('node --harmony --harmony_proxies index.js --file ./jstests/' + file);
     ++success;
   } catch(e) {
     console.log('Test failed: ' + e);
