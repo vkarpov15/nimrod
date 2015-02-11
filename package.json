@@ -17,8 +17,6 @@
   },
   "devDependencies": {
     "acquit": "0.0.3",
-    "gulp": "3.8.10",
-    "gulp-clean": "0.3.1",
     "jscs": "1.9.0",
     "moment": "2.4.0",
     "request": "2.51.0"
