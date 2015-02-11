@@ -214,6 +214,10 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
       }
     });
 
+    replServer.on('exit', function() {
+      process.exit(0);
+    });
+
     helpers.extend(replServer.context, initContext);
 
     Object.defineProperty(replServer.context, 'it', {
