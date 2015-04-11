@@ -16,4 +16,4 @@ jstests.forEach(function(file) {
   }
 });
 
-console.log('Passed: ' + success + '/' + jstests.length);
+console.log('Passed: ' + success + '/' + jstests.length + ' (' + (success / jstests.length).toFixed(2) + ')');

@@ -125,7 +125,12 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     print: console.log,
     BulkWriteResult: CollMethods.BulkWriteResult,
     require: require,
-    process: process
+    process: process,
+    sleep: function(time) {
+      return _conn.flow.sync(function(callback) {
+        setTimeout(callback, time);
+      });
+    }
   };
 
   ['Array', 'Object', 'tojson', 'friendlyEqual',
