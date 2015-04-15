@@ -66,6 +66,8 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
           return function() { return conn; };
         } else if (op1 === '_name') {
           return conn.db.databaseName;
+        } else if (op1 === 'toString') {
+          return function() { return conn.db.databaseName; };
         }
 
         if (dbMethodKeys.indexOf(op1) !== -1) {
