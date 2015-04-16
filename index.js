@@ -132,7 +132,8 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
       return _conn.flow.sync(function(callback) {
         setTimeout(callback, time);
       });
-    }
+    },
+    Geo: require('./lib/geo')
   };
 
   ['Array', 'Object', 'tojson', 'friendlyEqual',
