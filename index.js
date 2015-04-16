@@ -132,7 +132,8 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
       return _conn.flow.sync(function(callback) {
         setTimeout(callback, time);
       });
-    }
+    },
+    NumberInt: function(v) { return v; }
   };
 
   ['Array', 'Object', 'tojson', 'friendlyEqual',
