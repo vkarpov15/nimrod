@@ -133,7 +133,9 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
         setTimeout(callback, time);
       });
     },
-    Geo: require('./lib/geo')
+    Geo: require('./lib/geo'),
+    NumberLong: mongodb.Long,
+    NumberInt: mongodb.Long
   };
 
   ['Array', 'Object', 'tojson', 'friendlyEqual',
