@@ -136,6 +136,10 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     Geo: require('./lib/geo'),
     NumberLong: mongodb.Long,
     NumberInt: mongodb.Long,
+    isNumber: function(n) {
+      return typeof n === 'number';
+    },
+    testingReplication: false,
     // DEPRECATED: very janky API with even more janky implementation
     load: function(path) {
       var code = require('fs').readFileSync('./mongo/' + path);
