@@ -146,7 +146,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     load: function(path) {
       var code = require('fs').readFileSync(path);
       var context = vm.createContext(initContext);
-      context.flow = flow;
+      context.flow = _conn.flow;
       vm.runInContext(code, context);
       for (var key in context) {
         if (!initContext[key]) {
