@@ -1,12 +1,12 @@
 {
   "name": "nimrod",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "NodeJS-infused MongoDB shell - use require() and synchronous db.collection.find() in the same environment",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Valeri Karpov <val@karpov.io>",
+  "author": "Valeri Karpov <valeri.karpov@mongodb.com>",
   "dependencies": {
     "asyncblock": "https://github.com/vkarpov15/asyncblock/archive/master.tar.gz",
     "co": "3.1.0",
