@@ -212,7 +212,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
             conns.push(newConn);
           }
 
-          if (result instanceof ShellIterator) {
+          if (result.constructor.name === 'ShellIterator') {
             lastCursor = result;
             var documents = [];
             for (var i = 0; i < 10; ++i) {
