@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var repl = require('repl');
 var mongodb = require('mongodb');
 var commander = require('commander');
