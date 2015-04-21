@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/node --harmony_proxies
 
 var repl = require('repl');
 var mongodb = require('mongodb');
