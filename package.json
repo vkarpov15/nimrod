@@ -34,5 +34,8 @@
     "preset": "airbnb",
     "requireMultipleVarDecl": null,
     "disallowMultipleVarDecl": true
+  },
+  "bin": {
+    "nimrod": "index.js"
   }
 }
