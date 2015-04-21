@@ -144,7 +144,7 @@ mongodb.MongoClient.connect(commander.uri, function(error, dbConn) {
     testingReplication: false,
     // DEPRECATED: very janky API with even more janky implementation
     load: function(path) {
-      var code = require('fs').readFileSync('./mongo/' + path);
+      var code = require('fs').readFileSync(path);
       var context = vm.createContext(initContext);
       context.flow = flow;
       vm.runInContext(code, context);
